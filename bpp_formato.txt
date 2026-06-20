@@ -1,0 +1,12 @@
+Formato dos Arquivos
+
+primeira linha ==> n (número de objetos)
+
+segunda linha ==> C (Capacidade dos bins - caixas)
+
+Demais linhas (uma para cada objeto i=1 a n)
+Pi
+
+onde:
+
+Pi = peso do objeto-i

@@ -1,0 +1,181 @@
+import os
+import random
+import time
+import math
+import re
+import copy
+
+# 1. Configuração do Caminho (Exatamente como na sua imagem)
+DIRETORIO = r"C:\Users\Miguel Mota\Desktop\trabalho_valdisio"
+
+ARQUIVOS_INSTANCIAS = [
+    "bpp_formato.txt",       # Provavelmente contém a BP-0 de exemplo
+    "_BP-1_n50C1000.txt",
+    "_BP-2_n100C1000.txt",
+    "_BP-4_n200C1000.txt",
+    "_BP-6_n500C150.rtf",    # Leitura robusta vai lidar com o formato .rtf
+    "_BP-7_n1000C150.rtf"
+]
+
+# 2. Leitura Robusta (Ignora sujeiras do .rtf e pega só os números)
+def carregar_instancia_robusta(caminho_arquivo):
+    with open(caminho_arquivo, 'r', encoding='utf-8', errors='ignore') as f:
+        conteudo = f.read()
+    
+    # Extrai todos os blocos de números inteiros do texto
+    numeros = [int(x) for x in re.findall(r'\b\d+\b', conteudo)]
+    
+    if len(numeros) < 2:
+        return None, None, None
+        
+    n = numeros[0]
+    C = numeros[1]
+    # Pega exatamente 'n' itens após os dois primeiros números
+    itens = numeros[2:2+n] 
+    return n, C, itens
+
+# 3. Heurística Auxiliar (First-Fit Decreasing) para Solução Inicial
+def solucao_inicial_ffd(itens, C):
+    itens_ordenados = sorted(itens, reverse=True)
+    bins = []
+    for item in itens_ordenados:
+        alocado = False
+        for b in bins:
+            if sum(b) + item <= C:
+                b.append(item)
+                alocado = True
+                break
+        if not alocado:
+            bins.append([item])
+    return bins
+
+def calcular_custo(bins):
+    return len(bins)
+
+# 4. Estrutura de Vizinhança (Perturbação)
+def gerar_vizinho(bins, C):
+    novo_bins = copy.deepcopy(bins)
+    if len(novo_bins) <= 1: return novo_bins
+
+    bin_origem_idx = random.randint(0, len(novo_bins) - 1)
+    if not novo_bins[bin_origem_idx]: return novo_bins
+    
+    item = random.choice(novo_bins[bin_origem_idx])
+    novo_bins[bin_origem_idx].remove(item)
+    
+    alocado = False
+    for i, b in enumerate(novo_bins):
+        if i != bin_origem_idx and sum(b) + item <= C:
+            b.append(item)
+            alocado = True
+            break
+            
+    if not alocado:
+        novo_bins.append([item])
+        
+    return [b for b in novo_bins if b]
+
+# 5. O Algoritmo Simulated Annealing
+def simulated_annealing(itens, C, temp_inicial=100.0, taxa_resfriamento=0.95, iter_max=2500):
+    solucao_atual = solucao_inicial_ffd(itens, C)
+    custo_atual = calcular_custo(solucao_atual)
+    
+    melhor_solucao = copy.deepcopy(solucao_atual)
+    melhor_custo = custo_atual
+    
+    # Armazena TODOS os custos parciais encontrados (exigência do professor)
+    todos_custos_explorados = [custo_atual]
+    
+    temp = temp_inicial
+    inicio_tempo = time.time()
+    
+    while temp > 1.0:
+        for _ in range(iter_max):
+            vizinho = gerar_vizinho(solucao_atual, C)
+            custo_vizinho = calcular_custo(vizinho)
+            todos_custos_explorados.append(custo_vizinho)
+            
+            delta = custo_vizinho - custo_atual
+            
+            if delta < 0 or random.random() < math.exp(-delta / temp):
+                solucao_atual = vizinho
+                custo_atual = custo_vizinho
+                
+                if custo_atual < melhor_custo:
+                    melhor_solucao = copy.deepcopy(solucao_atual)
+                    melhor_custo = custo_atual
+                    
+        temp *= taxa_resfriamento
+        
+    tempo_execucao = time.time() - inicio_tempo
+    
+    return melhor_solucao, melhor_custo, todos_custos_explorados, tempo_execucao
+
+# 6. Execução Principal (Loop exigido de 3 vezes por instância)
+def executar_bateria_de_testes():
+    print("-" * 100)
+    print(f"{'INSTÂNCIA':<20} | {'N':<5} | {'C':<5} | {'INICIAL':<7} | {'PIOR':<5} | {'MÉDIA':<6} | {'MELHOR':<7} | {'% PERDA':<8} | {'TEMPO(s)':<8}")
+    print("-" * 100)
+
+    for arquivo in ARQUIVOS_INSTANCIAS:
+        caminho_completo = os.path.join(DIRETORIO, arquivo)
+        
+        if not os.path.exists(caminho_completo):
+            print(f"Arquivo não encontrado: {arquivo}")
+            continue
+            
+        n, C, itens = carregar_instancia_robusta(caminho_completo)
+        
+        if n is None:
+            continue
+
+        melhor_solucao_global = None
+        melhor_custo_global = float('inf')
+        
+        todos_custos_3_execucoes = []
+        tempos_3_execucoes = []
+        valor_inicial_primeira_rodada = None
+
+        # Roda 3 vezes cada instância
+        for rodada in range(3):
+            m_solucao, m_custo, custos_explorados, tempo = simulated_annealing(itens, C)
+            
+            if rodada == 0:
+                valor_inicial_primeira_rodada = custos_explorados[0]
+                
+            todos_custos_3_execucoes.extend(custos_explorados)
+            tempos_3_execucoes.append(tempo)
+            
+            if m_custo < melhor_custo_global:
+                melhor_custo_global = m_custo
+                melhor_solucao_global = m_solucao
+
+        # Cálculos Finais para a Tabela
+        pior_valor = max(todos_custos_3_execucoes)
+        melhor_valor = min(todos_custos_3_execucoes)
+        media_valor = sum(todos_custos_3_execucoes) / len(todos_custos_3_execucoes)
+        tempo_medio = sum(tempos_3_execucoes) / 3
+        
+        # Cálculo de % de Perda (somente para a melhor solução global)
+        peso_total_itens = sum(itens)
+        espaco_total_bins = len(melhor_solucao_global) * C
+        perda_percentual = ((espaco_total_bins - peso_total_itens) / espaco_total_bins) * 100
+
+        # Formatação para exibir no terminal igual à tabela
+        nome_curto = arquivo.split('_n')[0].replace('_', '') if '_n' in arquivo else "BP-0"
+        
+        print(f"{nome_curto:<20} | {n:<5} | {C:<5} | {valor_inicial_primeira_rodada:<7} | {pior_valor:<5} | {media_valor:<6.2f} | {melhor_valor:<7} | {perda_percentual:>6.2f}% | {tempo_medio:<8.4f}")
+        
+        # Salva a distribuição de itens da melhor solução em um arquivo de texto para vocês colocarem no relatório
+        with open(os.path.join(DIRETORIO, f"resultado_distribuicao_{nome_curto}.txt"), "w") as f:
+            f.write(f"Melhor Distribuição para {nome_curto}:\n")
+            f.write(f"Total de Bins Usados: {melhor_valor}\n")
+            f.write(f"Perda Percentual: {perda_percentual:.2f}%\n\n")
+            for i, b in enumerate(melhor_solucao_global):
+                f.write(f"Bin {i+1} (Soma: {sum(b)}/{C}): {b}\n")
+
+if __name__ == "__main__":
+    print("Iniciando bateria de testes do Simulated Annealing...")
+    executar_bateria_de_testes()
+    print("-" * 100)
+    print("Testes finalizados! Verifique os arquivos 'resultado_distribuicao_*.txt' criados na sua pasta para montar o relatório.")
