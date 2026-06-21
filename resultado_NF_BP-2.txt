@@ -1,4 +1,4 @@
-Resultado BP-2 com Inicial NFD
+Resultado BP-2 com Inicial NF
 Bins Usados: 12
 Perda: 6.06%
 

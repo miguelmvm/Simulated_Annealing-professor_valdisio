@@ -49,6 +49,19 @@ def first_fit(itens, C):
             bins.append([item])
     return bins
 
+def last_fit(itens, C):
+    bins = []
+    for item in itens:
+        colocou = False
+        for b in reversed(bins):
+            if sum(b) + item <= C:
+                b.append(item)
+                colocou = True
+                break
+        if not colocou:
+            bins.append([item])
+    return bins
+
 def best_fit(itens, C):
     bins = []
     for item in itens:
@@ -93,6 +106,7 @@ def gerar_solucao_inicial(tipo_heuristica, itens, C):
     nome_base = tipo_heuristica[:2]
     if nome_base == "NF": return next_fit(itens_processados, C)
     if nome_base == "FF": return first_fit(itens_processados, C)
+    if nome_base == "LF": return last_fit(itens_processados, C) 
     if nome_base == "BF": return best_fit(itens_processados, C)
     if nome_base == "WF": return worst_fit(itens_processados, C)
     return first_fit(itens_processados, C)
