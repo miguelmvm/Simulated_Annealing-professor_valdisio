@@ -1,4 +1,4 @@
-Resultado BP-2 com Inicial FLI
+Resultado BP-2 com Inicial LFI
 Bins Usados: 12
 Perda: 6.06%
 

@@ -172,7 +172,7 @@ def sa(itens, C, heuristica_inicial="FFD", t0=100.0, alpha=0.95, iter_max=400):
 # --- 6. EXECUÇÃO PRINCIPAL ---
 def main():
     # Muda a heurística para testar o comportamento (NFD, FFD, LFD, BFD, WFD, NFI, FFI, LFI, BFI e WFI)
-    HEURISTICA_TESTADA = "NFI" 
+    HEURISTICA_TESTADA = "LFI" 
     
     print("=" * 100)
     print(f"RODANDO SIMULATED ANNEALING COM HEURÍSTICA INICIAL: {HEURISTICA_TESTADA}")
